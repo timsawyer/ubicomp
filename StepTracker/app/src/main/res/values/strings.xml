@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Step Tracker</string>
+    <string name="title_steps">Steps</string>
+    <string name="title_native_steps">Native Steps</string>
+    <string name="title_debug">Debug</string>
+</resources>

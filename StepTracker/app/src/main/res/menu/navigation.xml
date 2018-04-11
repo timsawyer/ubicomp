@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_steps"
+        android:icon="@drawable/ic_directions_walk_black_24dp"
+        android:title="@string/title_steps" />
+
+    <item
+        android:id="@+id/navigation_native_steps"
+        android:icon="@drawable/ic_android_black_24dp"
+        android:title="@string/title_native_steps" />
+
+    <item
+        android:id="@+id/navigation_debug"
+        android:icon="@drawable/ic_bug_report_black_24dp"
+        android:title="@string/title_debug" />
+
+</menu>
