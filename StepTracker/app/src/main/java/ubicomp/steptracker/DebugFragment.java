@@ -41,7 +41,7 @@ public class DebugFragment extends Fragment {
     final int mMaxDataPoints = 60;
     final int mMinY = -8;
     final int mMaxY = 8;
-    final int mTimerDelay = 50;
+    final int mTimerDelay = 100;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,

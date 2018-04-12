@@ -35,8 +35,8 @@ public class Steps extends AppCompatActivity implements SensorEventListener {
                 case R.id.navigation_steps:
                     FragmentTransaction stepsFragmentTransaction = fragmentManager.beginTransaction();
                     stepsFragmentTransaction.replace(R.id.fragment_container, stepsFragment).commit();
-
                     return true;
+
                 case R.id.navigation_debug:
                     FragmentTransaction debugFragmentTransaction = fragmentManager.beginTransaction();
                     debugFragmentTransaction.replace(R.id.fragment_container, debugFragment).commit();
@@ -51,16 +51,16 @@ public class Steps extends AppCompatActivity implements SensorEventListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_steps);
 
-        // show steps fragment
 //        FragmentTransaction stepsFragmentTransaction = fragmentManager.beginTransaction();
-//        stepsFragmentTransaction.replace(R.id.fragment_container, stepsFragment).commit();
-
-        FragmentTransaction stepsFragmentTransaction = fragmentManager.beginTransaction();
-        stepsFragmentTransaction.replace(R.id.fragment_container, debugFragment).commit();
+//        stepsFragmentTransaction.replace(R.id.fragment_container, debugFragment).commit();
 
         // register listener for bottom nav
         BottomNavigationView navigation = findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+
+        // show steps fragment
+        FragmentTransaction stepsFragmentTransaction = fragmentManager.beginTransaction();
+        stepsFragmentTransaction.replace(R.id.fragment_container, stepsFragment).commit();
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
     }

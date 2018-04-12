@@ -6,75 +6,43 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        <Button
+            android:id="@+id/ripple_button"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:elevation="0dp" />
 
         <LinearLayout
+            android:id="@+id/steps_count_layout"
             android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_height="603dp"
+            android:gravity="center"
+            android:orientation="vertical">
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/steps_count_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:orientation="vertical">
+                android:layout_marginBottom="8dp"
+                android:layout_marginTop="8dp"
+                android:text="0"
+                android:textAlignment="center"
+                android:textAppearance="@android:style/TextAppearance.Material.Display1"
+                android:textSize="48sp"
+                app:layout_constraintBottom_toTopOf="@+id/textView"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:layout_editor_absoluteX="8dp" />
 
-                <TextView
-                    android:id="@+id/steps_count_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textAlignment="center"
-                    android:textAppearance="@android:style/TextAppearance.Material.Display1"
-                    android:textSize="48sp" />
-
-                <TextView
-                    android:id="@+id/textView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Step count"
-                    android:textAlignment="center" />
-            </LinearLayout>
-
-            <LinearLayout
+            <TextView
+                android:id="@+id/textView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/native_steps_count_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textAlignment="center"
-                    android:textAppearance="@android:style/TextAppearance.Material.Display1"
-                    android:textSize="48sp" />
-
-                <TextView
-                    android:id="@+id/textView4"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Native step count"
-                    android:textAlignment="center" />
-            </LinearLayout>
-
+                android:layout_marginBottom="8dp"
+                android:text="Step count"
+                android:textAlignment="center"
+                app:layout_constraintBottom_toBottomOf="parent"
+                tools:layout_editor_absoluteX="8dp" />
         </LinearLayout>
-
-        <com.jjoe64.graphview.GraphView
-            android:id="@+id/steps_graph"
-            android:layout_width="match_parent"
-            android:layout_height="250dip"
-            android:layout_margin="8dp" />
-
-    </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>
