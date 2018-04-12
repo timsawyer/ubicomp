@@ -42,15 +42,17 @@ public class StepsFragment extends Fragment {
 
         DisplayMetrics displayMetrics = getActivity().getResources().getDisplayMetrics();
         mDisplayWidth  = displayMetrics.widthPixels;
-        mDisplayHeight =displayMetrics.heightPixels;
+        mDisplayHeight = displayMetrics.heightPixels;
 
         int color = Color.parseColor("#ff252525");
+        int pressed = Color.parseColor("#88ffffff");
         int mask = Color.parseColor("#ff252525");
 
         ColorDrawable defaultColor = new ColorDrawable(color);
         ColorDrawable maskColor = new ColorDrawable(mask);
 
-        mRippleDrawable = new RippleDrawable(ColorStateList.valueOf(Color.LTGRAY), defaultColor, maskColor);
+        mRippleDrawable = new RippleDrawable(getColorStateList(color, pressed), defaultColor, null);
+//        mRippleDrawable.setRadius(800);
 
         mRippleButton = (Button) getActivity().findViewById(R.id.ripple_button);
         mRippleButton.setBackground(mRippleDrawable);
@@ -104,7 +106,27 @@ public class StepsFragment extends Fragment {
                     mRippleInEffect = false;
                 }
             };
-            mHandler.postDelayed(timer, 500);
+            mHandler.postDelayed(timer, 400);
         }
+    }
+
+    public ColorStateList getColorStateList(int normalColor, int pressedColor)
+    {
+        return new ColorStateList(
+            new int[][]
+                {
+                    new int[]{android.R.attr.state_pressed},
+                    new int[]{android.R.attr.state_focused},
+                    new int[]{android.R.attr.state_activated},
+                    new int[]{}
+                },
+            new int[]
+                {
+                    pressedColor,
+                    pressedColor,
+                    pressedColor,
+                    normalColor
+                }
+            );
     }
 }
