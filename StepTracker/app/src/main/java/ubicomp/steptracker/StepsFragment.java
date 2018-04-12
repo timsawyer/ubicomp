@@ -12,25 +12,20 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
-
 import com.jjoe64.graphview.GraphView;
-import com.jjoe64.graphview.LegendRenderer;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 import com.jjoe64.graphview.series.PointsGraphSeries;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-
 import uk.me.berndporr.iirj.*;
 
-import static android.os.Environment.getDataDirectory;
+
+class DrawPoint {
+    public double magnitude;
+    public double filteredMagnitude;
+    public boolean stepPoint;
+}
 
 public class StepsFragment extends Fragment implements SensorEventListener {
     private final Handler mHandler = new Handler();
@@ -38,6 +33,7 @@ public class StepsFragment extends Fragment implements SensorEventListener {
 
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
+    private Sensor mNativeStepSensor;
 
     private Double mMagnitude;
     ArrayList<Double> mMagnitudePoints = new ArrayList<Double>();
@@ -51,29 +47,48 @@ public class StepsFragment extends Fragment implements SensorEventListener {
     private LineGraphSeries<DataPoint> mFilterSeries;
     private PointsGraphSeries<DataPoint> mPointSeries;
 
-    ArrayList<Double> mStepPoints = new ArrayList<Double>();
+    ArrayList<Double> mDrawnMagnitudePoints = new ArrayList<Double>();
+    ArrayList<Double> mDrawnFilteredPoints = new ArrayList<Double>();
+    ArrayList<Double> mDrawnStepPoints = new ArrayList<Double>();
+
+    ArrayList<DrawPoint> mDrawPoints = new ArrayList<DrawPoint>();
     private TextView mStepCountText;
+    private TextView mNativeStepCountText;
 
-    final int mMaxDataPoints = 100;
-    final double mMinY = 8.0;
-    final double mMaxY = 12.0;
-    final int mTimerDelay = 200;
+    final int mMaxDataPoints = 150;
+    final double mMinY = -1.0;
+    final double mMaxY = 8.0;
+    final int mTimerDelay = 150;
 
-    private final int mBufferSize = 100;
-    private final double mC = 0.7;
-    private final double mThreshold = 10.5;
+    private final double mThreshold = 0.1;
     private int mStepCount;
-    private int mPeakCount;
-    private double mPeakAccumulate;
-    private double mPeakMean;
+    private boolean mZeroCrossing = false;
+    private double mMovingAverage;
+    private int mMovingAverageWindowSize = 40;
 
     private Butterworth mButterworth = new Butterworth();
+
+    private SensorEventListener mNativeStepListener;
+    private Float mNativeStepInitialValue;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         mSensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
-        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+
+        // setup native step counter
+        mNativeStepSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        mNativeStepListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                onNativeStepSensorChanged(event);
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+            }
+        };
 
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.steps_fragment, container, false);
@@ -106,12 +121,13 @@ public class StepsFragment extends Fragment implements SensorEventListener {
         mGraph.getViewport().setXAxisBoundsManual(true);
 
         mStepCountText = getActivity().findViewById(R.id.steps_count_text);
+        mNativeStepCountText = getActivity().findViewById(R.id.native_steps_count_text);
 
         mSeriesX = 0;
         mStepCount = 0;
-        mPeakCount = 0;
-        mPeakAccumulate = 0.0;
-        mPeakMean = 0.0;
+        mFilteredMagnitude = 0.0;
+        mMagnitude = 0.0;
+        mMovingAverage = 0.0;
     }
 
     @Override
@@ -120,77 +136,120 @@ public class StepsFragment extends Fragment implements SensorEventListener {
         mSeries.resetData(new DataPoint[]{});
         mFilterSeries.resetData(new DataPoint[]{});
         mSeriesX = 0;
+        mFilteredMagnitude = 0.0;
+        mMagnitude = 0.0;
+        mDrawnStepPoints.clear();
+        mDrawnFilteredPoints.clear();
+        mDrawnMagnitudePoints.clear();
         mButterworth.lowPass(20, 50, 5);
+
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        mSensorManager.registerListener(mNativeStepListener, mNativeStepSensor, SensorManager.SENSOR_DELAY_UI);
 
         mTimer = new Runnable() {
             @Override
             public void run() {
-                mSeriesX += 1;
+                // draw points
+                for (DrawPoint dp: mDrawPoints) {
+                    mSeries.appendData(new DataPoint(mSeriesX, dp.magnitude), true, mMaxDataPoints);
+                    mFilterSeries.appendData(new DataPoint(mSeriesX, dp.filteredMagnitude), true, mMaxDataPoints);
 
-                mSeries.appendData(new DataPoint(mSeriesX, mMagnitude), true, mMaxDataPoints);
-                mFilterSeries.appendData(new DataPoint(mSeriesX, mFilteredMagnitude), true, mMaxDataPoints);
-                mStepCountText.setText(Integer.toString(mStepCount));
+                    if (dp.stepPoint) {
+                        mPointSeries.appendData(new DataPoint(mSeriesX, dp.filteredMagnitude), true, mMaxDataPoints);
+                    }
 
-                for (Double stepPoint: mStepPoints) {
-                    mPointSeries.appendData(new DataPoint(mSeriesX, stepPoint), true, mMaxDataPoints);
+                    mSeriesX++;
                 }
+                mDrawPoints.clear();
 
-                mStepPoints.clear();
+                mStepCountText.setText(Integer.toString(mStepCount));
                 mHandler.postDelayed(this, mTimerDelay);
             }
         };
         mHandler.postDelayed(mTimer, mTimerDelay);
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        mSensorManager.unregisterListener(this);
+        mSensorManager.unregisterListener(mNativeStepListener);
+    }
+
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         // magnitude^2 = x^2 + y^2 + z^2
-        mMagnitude = Math.sqrt(Math.pow(event.values[0], 2.0) + Math.pow(event.values[1], 2.0) + Math.pow(event.values[2], 2.0));
-//        mMagnitudePoints.add(mMagnitude);
+        double magnitude = Math.sqrt(Math.pow(event.values[0], 2.0) + Math.pow(event.values[1], 2.0) + Math.pow(event.values[2], 2.0));
+        mMagnitudePoints.add(magnitude);
 
-        mFilteredMagnitude = mButterworth.filter(mMagnitude);
-        mFilteredPoints.add(mFilteredMagnitude);
+        if (mMagnitudePoints.size() >= mMovingAverageWindowSize) {
+            mMovingAverage = calculateAverage(mMagnitudePoints);
+            double filteredMagnitude = mButterworth.filter(magnitude - mMovingAverage);
+            mFilteredPoints.add(filteredMagnitude);
 
-        // filter signal with moving average filter
-        if (mFilteredPoints.size() == mBufferSize) {
-            mPeakCount = 0;
-            mPeakAccumulate = 0;
+            if (mFilteredPoints.size() == 3) {
+                mMagnitude = mMagnitudePoints.get(1);
+                mFilteredMagnitude = mFilteredPoints.get(1);
 
-            for (int i = 1; i < mFilteredPoints.size()-1; i++) {
-                double forwardSlope = mFilteredPoints.get(i+1) - mFilteredPoints.get(i);
-                double backwardSlope = mFilteredPoints.get(i) - mFilteredPoints.get(i-1);
+                DrawPoint dp = new DrawPoint();
+                dp.magnitude = mMagnitude;
+                dp.filteredMagnitude = mFilteredMagnitude;
+                dp.stepPoint = false;
 
-                if (forwardSlope < 0 && backwardSlope > 0) {
-                    mPeakCount++;
-                    mPeakAccumulate += mFilteredPoints.get(i);
-                }
-            }
+                double forwardSlope = mFilteredPoints.get(2) - mFilteredMagnitude;
+                double backwardSlope = mFilteredMagnitude - mFilteredPoints.get(0);
 
-            mPeakMean = mPeakAccumulate / mPeakCount;
-
-            for (int i = 1; i < mFilteredPoints.size()-1; i++) {
-                double forwardSlope = mFilteredPoints.get(i+1) - mFilteredPoints.get(i);
-                double backwardSlope = mFilteredPoints.get(i) - mFilteredPoints.get(i-1);
-
+                // if peak above threshold
                 if (forwardSlope < 0 &&
-                    backwardSlope > 0 &&
-                    mFilteredPoints.get(i) > mC * mPeakMean &&
-                    mFilteredPoints.get(i) > mThreshold
-                ) {
+                        backwardSlope > 0 &&
+                        mFilteredPoints.get(1) > mThreshold &&
+                        mZeroCrossing ) {
+
                     mStepCount++;
+                    mZeroCrossing = false;
 
-                    // TODO: get step points to align with correct x value of peaks
-                    mStepPoints.add(mFilteredPoints.get(i));
+                    dp.stepPoint = true;
                 }
-            }
 
-            mFilteredPoints.clear();
+                if (mFilteredMagnitude < 0) {
+                    mZeroCrossing = true;
+                }
+
+                mDrawPoints.add(dp);
+
+                mMagnitudePoints.remove(0);
+                mFilteredPoints.remove(0);
+            }
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+
+    private void onNativeStepSensorChanged(SensorEvent event) {
+
+        if (mNativeStepInitialValue == null) {
+            mNativeStepInitialValue = event.values[0];
+        }
+        else {
+            int stepCount = Math.round(event.values[0] - mNativeStepInitialValue);
+            mNativeStepCountText.setText(String.valueOf(stepCount));
+        }
+
+    }
+
+    private double calculateAverage(ArrayList <Double> values) {
+        Double sum = 0.0;
+        if(!values.isEmpty()) {
+            for (Double value : values) {
+                sum += value;
+            }
+            return sum / values.size();
+        }
+        return sum;
     }
 }
