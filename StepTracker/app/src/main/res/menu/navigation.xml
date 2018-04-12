@@ -7,11 +7,6 @@
         android:title="@string/title_steps" />
 
     <item
-        android:id="@+id/navigation_native_steps"
-        android:icon="@drawable/ic_android_black_24dp"
-        android:title="@string/title_native_steps" />
-
-    <item
         android:id="@+id/navigation_debug"
         android:icon="@drawable/ic_bug_report_black_24dp"
         android:title="@string/title_debug" />

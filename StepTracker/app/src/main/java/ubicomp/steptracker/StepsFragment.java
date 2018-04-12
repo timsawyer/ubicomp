@@ -21,12 +21,6 @@ import java.util.ArrayList;
 import uk.me.berndporr.iirj.*;
 
 
-class DrawPoint {
-    public double magnitude;
-    public double filteredMagnitude;
-    public boolean stepPoint;
-}
-
 public class StepsFragment extends Fragment implements SensorEventListener {
     private final Handler mHandler = new Handler();
     private Runnable mTimer;
@@ -47,11 +41,11 @@ public class StepsFragment extends Fragment implements SensorEventListener {
     private LineGraphSeries<DataPoint> mFilterSeries;
     private PointsGraphSeries<DataPoint> mPointSeries;
 
-    ArrayList<Double> mDrawnMagnitudePoints = new ArrayList<Double>();
-    ArrayList<Double> mDrawnFilteredPoints = new ArrayList<Double>();
-    ArrayList<Double> mDrawnStepPoints = new ArrayList<Double>();
+    ArrayList<Double> mDrawnMagnitudePoints = new ArrayList<>();
+    ArrayList<Double> mDrawnFilteredPoints = new ArrayList<>();
+    ArrayList<Double> mDrawnStepPoints = new ArrayList<>();
 
-    ArrayList<DrawPoint> mDrawPoints = new ArrayList<DrawPoint>();
+    ArrayList<DrawPoint> mDrawPoints = new ArrayList<>();
     private TextView mStepCountText;
     private TextView mNativeStepCountText;
 
@@ -231,7 +225,6 @@ public class StepsFragment extends Fragment implements SensorEventListener {
 
 
     private void onNativeStepSensorChanged(SensorEvent event) {
-
         if (mNativeStepInitialValue == null) {
             mNativeStepInitialValue = event.values[0];
         }
