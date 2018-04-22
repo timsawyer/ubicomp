@@ -32,6 +32,7 @@ public class StepTrackerUtil implements SensorEventListener {
     private double mMovingAverage = 0;
     private int mMovingAverageWindowSize = 40;
 
+    // Butteworth filter library from https://github.com/berndporr/iirj
     private Butterworth mButterworth = new Butterworth();
 
     private SensorEventListener mNativeStepListener;
