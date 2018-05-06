@@ -21,21 +21,32 @@ int photoIn = A4;
 
 int potIn = A0;
 
+int ledPower = 3;
 int ledRed = D0;
 int ledGreen = D1;
 int ledBlue = D2;
+
+int soundOut = 4;
+
+int maxVoltgage = 3.3;
+int maxInput = 4095;
+
+int MIN_PHOTO_CELL_VALUE = 1200;
+int MAX_PHOTO_CELL_VALUE = 3700;
 
 // the setup routine runs once when you press reset:
 void setup() {
   Serial.begin(9600);
   
   // declare pin 9 to be an output:
+  pinMode(ledPower, OUTPUT);
   pinMode(ledRed, OUTPUT);
   pinMode(ledBlue, OUTPUT);
   pinMode(ledGreen, OUTPUT);
 
   pinMode(photoOut, OUTPUT);
-  digitalWrite(photoOut, HIGH);
+
+  pinMode(soundOut, OUTPUT);
 }
 
 // the loop routine runs over and over again forever:
@@ -45,7 +56,20 @@ void loop() {
 
 // in progress
   int photoValue = analogRead(photoIn);
-  Serial.println(photoValue);
+
+  float inputVoltage = 3.3 * photoValue / 4095;
+  Serial.println(inputVoltage);
+
+  float photoPercentage = inputVoltage / 3.3;
+  int powerOut = (1 - photoPercentage) * 255;
+  analogWrite(ledPower, powerOut);
+
+//  float photoPercentage = photoIn / MAX_PHOTO_CELL_VALUE;
+//  int powerOut = (1 - photoPercentage) * 255;
+//  analogWrite(ledPower, powerOut);
+
+
+  tone(soundOut, photoIn);
   
   delay(30);
 }
