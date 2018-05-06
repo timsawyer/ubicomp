@@ -29,10 +29,13 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -50,6 +53,16 @@ import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
+
+/**
+ * TODOs:
+ * 1. Handle switching different color modes
+ * 2. Hook up accelerometer, map axi to rgb and send bluetooth messages
+ * 3. Synchronize color wheel with whatever color is selected by trim pot or by accelerometer
+ * 4. adjust UI to get rid of unused buttons. Rename brightness button
+ * 5. Add other rgb led's
+ * 6. build enclosure
+ */
 public class MainActivity extends AppCompatActivity {
 
     private AlertDialog alertDialog;
@@ -479,9 +492,35 @@ public class MainActivity extends AppCompatActivity {
                 RBLService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 
+        /**
+         * Color mode spinner setup
+         */
+        Spinner spinner = (Spinner) findViewById(R.id.colorModeSpinner);
+
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.color_modes, android.R.layout.simple_spinner_item);
+
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view,
+                                       int pos, long id) {
+                Object selectedMode = parent.getItemAtPosition(pos);
+                System.out.println(selectedMode.toString());
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Another interface callback
+            }
+        });
 
 
-        // colorpicker dialog setup
+        /**
+         * Color wheel setup
+         */
         ColorPickerDialog.Builder builder = new ColorPickerDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
         builder.setTitle("ColorPicker Dialog");
         builder.setPreferenceName("MyColorPickerDialog");

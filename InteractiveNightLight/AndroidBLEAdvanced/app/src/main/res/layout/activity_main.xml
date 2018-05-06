@@ -4,7 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:background="#FFF"
     android:orientation="vertical"
     tools:context="com.example.lianghe.android_ble_advanced.MainActivity">
 
@@ -27,7 +26,6 @@
                 android:layout_centerHorizontal="true"
                 android:layout_marginLeft="20dp"
                 android:width="100dp"
-                android:background="#6c9de6"
                 android:text="CONNECT"
                 android:textColor="#fff" />
 
@@ -50,16 +48,16 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="9dp"
-                        android:text="Device:" />
+                        android:text="Device:"
+                        android:textSize="9dp" />
 
                     <TextView
                         android:id="@+id/deviceName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="5dp"
-                        android:textSize="9dp"
-                        android:text="" />
+                        android:text=""
+                        android:textSize="9dp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -73,16 +71,16 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="9dp"
-                        android:text="RSSI:" />
+                        android:text="RSSI:"
+                        android:textSize="9dp" />
 
                     <TextView
                         android:id="@+id/rssiValue"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="5dp"
-                        android:textSize="9dp"
-                        android:text="" />
+                        android:text=""
+                        android:textSize="9dp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -96,16 +94,16 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="9dp"
-                        android:text="UUID:" />
+                        android:text="UUID:"
+                        android:textSize="9dp" />
 
                     <TextView
                         android:id="@+id/uuidValue"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="5dp"
-                        android:textSize="9dp"
-                        android:text="" />
+                        android:text=""
+                        android:textSize="9dp" />
                 </LinearLayout>
 
             </LinearLayout>
@@ -117,11 +115,52 @@
         android:layout_height="1dp"
         android:layout_marginBottom="5dp"
         android:layout_marginTop="10dp"
-        android:background="#dfdfdf" />
+        android:background="#777777" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="60dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/colorMode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Color mode"
+                android:textColor="#F0F0F0" />
+
+
+            <Spinner
+                android:id="@+id/colorModeSpinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#f0f0f0"
+                 />
+
+        </LinearLayout>
+
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="5dp"
+        android:layout_marginTop="10dp"
+        android:background="#777777" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="0dp">
 
@@ -137,7 +176,7 @@
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
                 android:text="Digital Out (write)"
-                android:textColor="#000000" />
+                android:textColor="#F0F0F0" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -168,7 +207,8 @@
         android:layout_height="1dp"
         android:layout_marginBottom="5dp"
         android:layout_marginTop="10dp"
-        android:background="#dfdfdf" />
+        android:background="#777777"
+        android:gravity="center_vertical" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -188,7 +228,7 @@
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
                 android:text="Digital In (read)"
-                android:textColor="#000000" />
+                android:textColor="#F0F0F0" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -220,7 +260,7 @@
         android:layout_height="1dp"
         android:layout_marginBottom="5dp"
         android:layout_marginTop="10dp"
-        android:background="#dfdfdf" />
+        android:background="#777777" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -240,7 +280,7 @@
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
                 android:text="Analog In (read)"
-                android:textColor="#000000" />
+                android:textColor="#F0F0F0" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -280,7 +320,7 @@
         android:layout_height="1dp"
         android:layout_marginBottom="5dp"
         android:layout_marginTop="10dp"
-        android:background="#dfdfdf" />
+        android:background="#777777" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -301,7 +341,7 @@
                 android:layout_marginRight="20dp"
                 android:layout_marginTop="20dp"
                 android:text="PWM Out (write)"
-                android:textColor="#000000" />
+                android:textColor="#F0F0F0" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -333,7 +373,7 @@
         android:layout_height="1dp"
         android:layout_marginBottom="5dp"
         android:layout_marginTop="10dp"
-        android:background="#dfdfdf" />
+        android:background="#777777" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -354,7 +394,7 @@
                 android:layout_marginRight="20dp"
                 android:layout_marginTop="20dp"
                 android:text="Servo (write)"
-                android:textColor="#000000" />
+                android:textColor="#F0F0F0" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -387,7 +427,7 @@
         android:layout_height="1dp"
         android:layout_marginBottom="5dp"
         android:layout_marginTop="10dp"
-        android:background="#dfdfdf" />
+        android:background="#777777" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -408,7 +448,7 @@
                 android:layout_marginRight="20dp"
                 android:layout_marginTop="20dp"
                 android:text="Color"
-                android:textColor="#000000" />
+                android:textColor="#F0F0F0" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -431,13 +471,13 @@
                 android:textColor="#000000" />
 
             <LinearLayout
-                android:onClick="showDialog"
                 android:id="@+id/colorRect"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:layout_marginRight="20dp"
                 android:layout_marginTop="15dp"
                 android:background="#ff0000"
+                android:onClick="showDialog"
                 android:orientation="horizontal"
                 android:padding="0dp">
 
@@ -446,5 +486,12 @@
 
         </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="5dp"
+        android:layout_marginTop="10dp"
+        android:background="#777777" />
 
 </LinearLayout>
