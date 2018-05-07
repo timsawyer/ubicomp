@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="brightness_modes">
+        <item>Auto</item>
+        <item>Manual</item>
+    </string-array>
+</resources>

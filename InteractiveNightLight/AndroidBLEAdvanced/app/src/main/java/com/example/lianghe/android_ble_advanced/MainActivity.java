@@ -80,8 +80,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView mRssiValue = null;
     private TextView mUUID = null;
     private TextView mAnalogInValue = null;
-    private ToggleButton mDigitalOutBtn, mDigitalInBtn, mAnalogInBtn;
-    private SeekBar mServoSeekBar, mPWMSeekBar;
+    private SeekBar mBrightnessSeekBar;
     private String mBluetoothDeviceName = "";
     private String mBluetoothDeviceUUID = "";
 
@@ -127,10 +126,10 @@ public class MainActivity extends AppCompatActivity {
         flag = false;
         mConnState = false;
 
-        mDigitalOutBtn.setEnabled(flag);
-        mAnalogInBtn.setEnabled(flag);
-        mServoSeekBar.setEnabled(flag);
-        mPWMSeekBar.setEnabled(flag);
+//        mDigitalOutBtn.setEnabled(flag);
+//        mAnalogInBtn.setEnabled(flag);
+//        mServoSeekBar.setEnabled(flag);
+        mBrightnessSeekBar.setEnabled(flag);
         mConnectBtn.setText("Connect");
         mRssiValue.setText("");
         mDeviceName.setText("");
@@ -141,10 +140,10 @@ public class MainActivity extends AppCompatActivity {
         flag = true;
         mConnState = true;
 
-        mDigitalOutBtn.setEnabled(flag);
-        mAnalogInBtn.setEnabled(flag);
-        mServoSeekBar.setEnabled(flag);
-        mPWMSeekBar.setEnabled(flag);
+//        mDigitalOutBtn.setEnabled(flag);
+//        mAnalogInBtn.setEnabled(flag);
+//        mServoSeekBar.setEnabled(flag);
+        mBrightnessSeekBar.setEnabled(flag);
         mConnectBtn.setText("Disconnect");
     }
 
@@ -185,21 +184,21 @@ public class MainActivity extends AppCompatActivity {
 
     // Display the received Analog/Digital read on the interface
     private void readAnalogInValue(byte[] data) {
-        for (int i = 0; i < data.length; i += 3) {
-            if (data[i] == 0x0A) {
-                if (data[i + 1] == 0x01)
-                    mDigitalInBtn.setChecked(false);
-                else
-                    mDigitalInBtn.setChecked(true);
-            } else if (data[i] == 0x0B) {
-                int Value;
-
-                Value = ((data[i + 1] << 8) & 0x0000ff00)
-                        | (data[i + 2] & 0x000000ff);
-
-                mAnalogInValue.setText(Value + "");
-            }
-        }
+//        for (int i = 0; i < data.length; i += 3) {
+//            if (data[i] == 0x0A) {
+//                if (data[i + 1] == 0x01)
+//                    mDigitalInBtn.setChecked(false);
+//                else
+//                    mDigitalInBtn.setChecked(true);
+//            } else if (data[i] == 0x0B) {
+//                int Value;
+//
+//                Value = ((data[i + 1] << 8) & 0x0000ff00)
+//                        | (data[i + 2] & 0x000000ff);
+//
+//                mAnalogInValue.setText(Value + "");
+//            }
+//        }
     }
 
     // Get Gatt service information for setting up the communication
@@ -326,13 +325,9 @@ public class MainActivity extends AppCompatActivity {
         mConnectBtn = (Button) findViewById(R.id.connectBtn);
         mDeviceName = (TextView) findViewById(R.id.deviceName);
         mRssiValue = (TextView) findViewById(R.id.rssiValue);
-        mAnalogInValue = (TextView) findViewById(R.id.ananlogIn);
-        mDigitalOutBtn = (ToggleButton) findViewById(R.id.DOutBtn);
-        mDigitalInBtn = (ToggleButton) findViewById(R.id.DInBtn);
-        mAnalogInBtn = (ToggleButton) findViewById(R.id.AInBtn);
-        mServoSeekBar = (SeekBar) findViewById(R.id.ServoSeekBar);
-        mPWMSeekBar = (SeekBar) findViewById(R.id.PWMSeekBar);
+        mBrightnessSeekBar = (SeekBar) findViewById(R.id.brightnessSeekBar);
         mUUID = (TextView) findViewById(R.id.uuidValue);
+
 
         // Connection button click event
         mConnectBtn.setOnClickListener(new View.OnClickListener() {
@@ -380,74 +375,35 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Send data to Duo board
-        // It has three bytes: maker, data value, reserved
-        mDigitalOutBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        /**
+         * Brightness mode spinner setup
+         */
+        Spinner brightnessSpinner = (Spinner) findViewById(R.id.brightnessModeSpinner);
 
+        ArrayAdapter<CharSequence> brightnessAdapter = ArrayAdapter.createFromResource(this,
+                R.array.brightness_modes, android.R.layout.simple_spinner_item);
+
+        brightnessAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        brightnessSpinner.setAdapter(brightnessAdapter);
+
+        brightnessSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view,
+                                       int pos, long id) {
+                Object selectedMode = parent.getItemAtPosition(pos);
+                System.out.println(selectedMode.toString());
+            }
 
             @Override
-            public void onCheckedChanged(CompoundButton buttonView,
-                                         boolean isChecked) {
-                byte buf[] = new byte[] { (byte) 0x01, (byte) 0x00, (byte) 0x00 };
-
-                if (isChecked == true)
-                    buf[1] = 0x01;
-                else
-                    buf[1] = 0x00;
-
-                mCharacteristicTx.setValue(buf);
-                mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Another interface callback
             }
         });
 
-        mAnalogInBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView,
-                                         boolean isChecked) {
-                byte[] buf = new byte[] { (byte) 0xA0, (byte) 0x00, (byte) 0x00 };
-
-                if (isChecked == true)
-                    buf[1] = 0x01;
-                else
-                    buf[1] = 0x00;
-
-                mCharacteristicTx.setValue(buf);
-                mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
-            }
-        });
-
-        // Configure the servo Seekbar
-        mServoSeekBar.setEnabled(false);
-        mServoSeekBar.setMax(180);  // Servo can rotate from 0 to 180 degree
-        mServoSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress,
-                                          boolean fromUser) {
-                byte[] buf = new byte[] { (byte) 0x03, (byte) 0x00, (byte) 0x00 };
-
-                buf[1] = (byte) mServoSeekBar.getProgress();
-
-                mCharacteristicTx.setValue(buf);
-                mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
-            }
-        });
-
-        // Configure the PWM Seekbar
-        mPWMSeekBar.setEnabled(false);
-        mPWMSeekBar.setMax(255);
-        mPWMSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        // Configure the Brightness Seekbar
+        mBrightnessSeekBar.setEnabled(false);
+        mBrightnessSeekBar.setMax(255);
+        mBrightnessSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
@@ -464,7 +420,7 @@ public class MainActivity extends AppCompatActivity {
                                           boolean fromUser) {
                 byte[] buf = new byte[] { (byte) 0x02, (byte) 0x00, (byte) 0x00 };
 
-                buf[1] = (byte) mPWMSeekBar.getProgress();
+                buf[1] = (byte) mBrightnessSeekBar.getProgress();
 
                 mCharacteristicTx.setValue(buf);
                 mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
