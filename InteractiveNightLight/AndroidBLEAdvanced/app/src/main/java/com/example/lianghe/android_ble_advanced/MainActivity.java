@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -130,6 +131,12 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<Float> mX_GyroPoints = new ArrayList<Float>();
     ArrayList<Float> mY_GyroPoints = new ArrayList<Float>();
     ArrayList<Float> mZ_GyroPoints = new ArrayList<Float>();
+
+    float [] mAccels;
+    float [] mMags;
+    private final Handler mHandler = new Handler();
+    private Runnable mTimer;
+    final int mTimerDelay = 10;
 
     private int mGyroMovingAverageWindowSize = 20;
 
@@ -577,8 +584,6 @@ public class MainActivity extends AppCompatActivity {
                     mY_MovingAverage = calculateAverage(mY_Points);
                     mZ_MovingAverage = calculateAverage(mZ_Points);
 
-                    System.out.println(mX_MovingAverage);
-
                     mX_Points.remove(0);
                     mY_Points.remove(0);
                     mZ_Points.remove(0);
@@ -611,47 +616,66 @@ public class MainActivity extends AppCompatActivity {
         /**
          * Orientation setup
          */
-
-        SensorEventListener gyroListiner = new SensorEventListener() {
+        SensorEventListener otherAccelListener = new SensorEventListener() {
             @Override
             public void onSensorChanged(SensorEvent event) {
-                mX_GyroPoints.add(event.values[0]);
-                mY_GyroPoints.add(event.values[1]);
-                mZ_GyroPoints.add(event.values[2]);
-
-                if (mX_GyroPoints.size() >= mGyroMovingAverageWindowSize) {
-                    mX_GyroMovingAverage = calculateAverage(mX_GyroPoints);
-                    mY_GyroMovingAverage = calculateAverage(mY_GyroPoints);
-                    mZ_GyroMovingAverage = calculateAverage(mZ_GyroPoints);
-
-                    mX_GyroPoints.remove(0);
-                    mY_GyroPoints.remove(0);
-                    mZ_GyroPoints.remove(0);
-                }
-
-
-                if (mColorMode.equals("Gyro") && mConnState == true) {
-
-                    SensorManager.getRotationMatrix(R, I, accels, mags);
-                    mSensorManager.getOrientation()
-                    double minGyro = -120;
-                    double maxGyro = 120;
-                    double rgbMin = 0;
-                    double rgbMax = 255;
-
-                    int mappedX = map(mX_GyroMovingAverage, radToDeg(-Math.PI), radToDeg(Math.PI), rgbMin, rgbMax);
-                    int mappedY = map(mY_GyroMovingAverage, radToDeg(-Math.PI/2), radToDeg(-Math.PI/2), rgbMin, rgbMax);
-                    int mappedZ = map(mZ_GyroMovingAverage, radToDeg(-Math.PI), radToDeg(Math.PI), rgbMin, rgbMax);
-
-                    sendColor(mappedX, mappedY, mappedZ);
-                }
+                mAccels = event.values.clone();
             }
 
             @Override
             public void onAccuracyChanged(Sensor sensor, int accuracy) { }
         };
         mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mSensorManager.registerListener(gyroListiner, mGyro, SensorManager.SENSOR_DELAY_UI);
+        mSensorManager.registerListener(otherAccelListener, mGyro, SensorManager.SENSOR_DELAY_UI);
+
+        SensorEventListener magListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                mMags = event.values.clone();
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+        };
+        Sensor magnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        mSensorManager.registerListener(magListener, magnetic, SensorManager.SENSOR_DELAY_UI);
+
+
+        mTimer = new Runnable() {
+            @Override
+            public void run() {
+                if (mMags != null && mAccels != null && mColorMode.equals("Gyro") && mConnState == true) {
+                    float R[] = new float[9];
+                    float I[] = new float[9];
+                    boolean success = SensorManager.getRotationMatrix(R, I, mAccels, mMags);
+                    if (success) {
+                        float orientation[] = new float[3];
+                        SensorManager.getOrientation(R, orientation);
+
+                        float azimut = orientation[0];
+                        float pitch = orientation[1];
+                        float roll = orientation[2];
+
+                        double rgbMin = 0;
+                        double rgbMax = 255;
+
+                        double minAzimutRoll = (-Math.PI);
+                        double maxAzimutRoll = (Math.PI);
+                        double minPitch = -Math.PI / 2;
+                        double maxPitch = Math.PI / 2;
+
+                        int mappedX = map(azimut, minAzimutRoll, maxAzimutRoll, rgbMin, rgbMax);
+                        int mappedY = map(pitch, minPitch, maxPitch, rgbMin, rgbMax);
+                        int mappedZ = map(roll, minAzimutRoll, maxAzimutRoll, rgbMin, rgbMax);
+
+                        sendColor(mappedX, mappedY, mappedZ);
+                    }
+                }
+
+                mHandler.postDelayed(this, mTimerDelay);
+            }
+        };
+        mHandler.postDelayed(mTimer, mTimerDelay);
     }
 
     public void showDialog(View view) {

@@ -27,6 +27,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_marginLeft="20dp"
                 android:width="100dp"
+                android:minWidth="130dp"
                 android:text="CONNECT"
                 android:textColor="#fff" />
 
