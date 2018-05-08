@@ -4,5 +4,6 @@
         <item>Trim pot</item>
         <item>Color wheel</item>
         <item>Accelerometer</item>
+        <item>Gyro</item>
     </string-array>
 </resources>

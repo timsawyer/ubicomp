@@ -23,6 +23,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -40,6 +41,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+
 import com.example.lianghe.android_ble_advanced.BLE.RBLGattAttributes;
 import com.example.lianghe.android_ble_advanced.BLE.RBLService;
 
@@ -49,6 +55,7 @@ import com.skydoves.colorpickerpreference.ColorPickerDialog;
 import com.skydoves.colorpickerpreference.ColorPickerView;
 import com.skydoves.colorpickerpreference.FlagMode;
 
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -101,6 +108,34 @@ public class MainActivity extends AppCompatActivity {
 
     final private static char[] hexArray = { '0', '1', '2', '3', '4', '5', '6',
             '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+
+    // accel sensor
+    private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
+    private float mX_MovingAverage = 0;
+    private float mY_MovingAverage = 0;
+    private float mZ_MovingAverage = 0;
+    ArrayList<Float> mX_Points = new ArrayList<Float>();
+    ArrayList<Float> mY_Points = new ArrayList<Float>();
+    ArrayList<Float> mZ_Points = new ArrayList<Float>();
+
+    private int mMovingAverageWindowSize = 50;
+
+    // gyro sensor
+    private Sensor mGyro;
+    private float mX_GyroMovingAverage = 0;
+    private float mY_GyroMovingAverage = 0;
+    private float mZ_GyroMovingAverage = 0;
+    ArrayList<Float> mX_GyroPoints = new ArrayList<Float>();
+    ArrayList<Float> mY_GyroPoints = new ArrayList<Float>();
+    ArrayList<Float> mZ_GyroPoints = new ArrayList<Float>();
+
+    private int mGyroMovingAverageWindowSize = 20;
+
+    // color and brightness modes
+    private String mColorMode = "";
+    private String mBrightnessMode = "";
 
     // Process service connection. Created by the RedBear Team
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -392,6 +427,7 @@ public class MainActivity extends AppCompatActivity {
                                        int pos, long id) {
                 Object selectedMode = parent.getItemAtPosition(pos);
                 System.out.println(selectedMode.toString());
+                mBrightnessMode = selectedMode.toString();
             }
 
             @Override
@@ -465,6 +501,7 @@ public class MainActivity extends AppCompatActivity {
                                        int pos, long id) {
                 Object selectedMode = parent.getItemAtPosition(pos);
                 System.out.println(selectedMode.toString());
+                mColorMode = selectedMode.toString();
             }
 
             @Override
@@ -508,8 +545,6 @@ public class MainActivity extends AppCompatActivity {
 
                 LinearLayout linearLayout = findViewById(R.id.colorRect);
                 linearLayout.setBackgroundColor(colorEnvelope.getColor());
-
-
             }
         });
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -523,10 +558,134 @@ public class MainActivity extends AppCompatActivity {
 
         ColorPickerView colorPickerView = builder.getColorPickerView();
         colorPickerView.setFlagMode(FlagMode.ALWAYS);
+
+
+        /**
+         * Accelerometer setup
+         */
+        mSensorManager = (SensorManager) this.getSystemService(Context.SENSOR_SERVICE);
+
+        SensorEventListener accelListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                mX_Points.add(event.values[0]);
+                mY_Points.add(event.values[1]);
+                mZ_Points.add(event.values[2]);
+
+                if (mX_Points.size() >= mMovingAverageWindowSize) {
+                    mX_MovingAverage = calculateAverage(mX_Points);
+                    mY_MovingAverage = calculateAverage(mY_Points);
+                    mZ_MovingAverage = calculateAverage(mZ_Points);
+
+                    System.out.println(mX_MovingAverage);
+
+                    mX_Points.remove(0);
+                    mY_Points.remove(0);
+                    mZ_Points.remove(0);
+                }
+
+
+                if (mColorMode.equals("Accelerometer") && mConnState == true) {
+                    double minAccel = -10;
+                    double maxAccel = 10;
+                    double rgbMin = 0;
+                    double rgbMax = 255;
+
+                    int mappedX = map(mX_MovingAverage, minAccel, maxAccel, rgbMin, rgbMax);
+                    int mappedY = map(mY_MovingAverage, minAccel, maxAccel, rgbMin, rgbMax);
+                    int mappedZ = map(mZ_MovingAverage, minAccel, maxAccel, rgbMin, rgbMax);
+
+                    sendColor(mappedX, mappedY, mappedZ);
+                }
+
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+            }
+        };
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+        mSensorManager.registerListener(accelListener, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+
+        /**
+         * Orientation setup
+         */
+
+        SensorEventListener gyroListiner = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                mX_GyroPoints.add(event.values[0]);
+                mY_GyroPoints.add(event.values[1]);
+                mZ_GyroPoints.add(event.values[2]);
+
+                if (mX_GyroPoints.size() >= mGyroMovingAverageWindowSize) {
+                    mX_GyroMovingAverage = calculateAverage(mX_GyroPoints);
+                    mY_GyroMovingAverage = calculateAverage(mY_GyroPoints);
+                    mZ_GyroMovingAverage = calculateAverage(mZ_GyroPoints);
+
+                    mX_GyroPoints.remove(0);
+                    mY_GyroPoints.remove(0);
+                    mZ_GyroPoints.remove(0);
+                }
+
+
+                if (mColorMode.equals("Gyro") && mConnState == true) {
+
+                    SensorManager.getRotationMatrix(R, I, accels, mags);
+                    mSensorManager.getOrientation()
+                    double minGyro = -120;
+                    double maxGyro = 120;
+                    double rgbMin = 0;
+                    double rgbMax = 255;
+
+                    int mappedX = map(mX_GyroMovingAverage, radToDeg(-Math.PI), radToDeg(Math.PI), rgbMin, rgbMax);
+                    int mappedY = map(mY_GyroMovingAverage, radToDeg(-Math.PI/2), radToDeg(-Math.PI/2), rgbMin, rgbMax);
+                    int mappedZ = map(mZ_GyroMovingAverage, radToDeg(-Math.PI), radToDeg(Math.PI), rgbMin, rgbMax);
+
+                    sendColor(mappedX, mappedY, mappedZ);
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+        };
+        mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensorManager.registerListener(gyroListiner, mGyro, SensorManager.SENSOR_DELAY_UI);
     }
 
     public void showDialog(View view) {
         alertDialog.show();
+    }
+
+    public int map(float x, double in_min, double in_max, double out_min, double out_max)
+    {
+        double val = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        return (int) val;
+    }
+
+    private void sendColor(int red, int green, int blue) {
+        byte[] bufRed = new byte[] { (byte) 0x07, (byte) 0x00, (byte) 0x00 };
+        bufRed[1] = (byte) red;
+        mCharacteristicTx.setValue(bufRed);
+        mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+
+        byte[] bufGreen = new byte[] { (byte) 0x08, (byte) 0x00, (byte) 0x00 };
+        bufGreen[1] = (byte) green;
+        mCharacteristicTx.setValue(bufGreen);
+        mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+
+        byte[] bufBlue = new byte[] { (byte) 0x09, (byte) 0x00, (byte) 0x00 };
+        bufBlue[1] = (byte) blue;
+        mCharacteristicTx.setValue(bufBlue);
+        mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+
+        String rgbText = "rgb(" + red + "," + green + "," + blue + ")";
+        TextView textView = findViewById(R.id.colorRGB);
+        textView.setText(rgbText);
+
+        LinearLayout linearLayout = findViewById(R.id.colorRect);
+        linearLayout.setBackgroundColor(Color.rgb(red, green, blue));
     }
 
     @Override
@@ -584,5 +743,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private float calculateAverage(ArrayList<Float> values) {
+        float sum = 0;
+        if(!values.isEmpty()) {
+            for (float value : values) {
+                sum += value;
+            }
+            return sum / values.size();
+        }
+        return sum;
+    }
+
+    private double radToDeg(double rad) {
+        return rad * (180 / Math.PI);
     }
 }
