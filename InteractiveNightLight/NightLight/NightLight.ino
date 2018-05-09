@@ -71,9 +71,9 @@ static boolean analog_enabled = false;
 // Input pin state.
 static byte old_state = LOW;
 
-int ledRed = D0;
+int ledRed = D2;
 int ledGreen = D1;
-int ledBlue = D2;
+int ledBlue = D0;
 
 
 /**
@@ -231,6 +231,8 @@ void setup() {
   pinMode(ledRed, OUTPUT);
   pinMode(ledBlue, OUTPUT);
   pinMode(ledGreen, OUTPUT);
+
+  analogWrite(PWM_PIN, 255);
 }
 
 void loop() {}

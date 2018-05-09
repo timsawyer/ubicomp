@@ -435,6 +435,14 @@ public class MainActivity extends AppCompatActivity {
                 Object selectedMode = parent.getItemAtPosition(pos);
                 System.out.println(selectedMode.toString());
                 mBrightnessMode = selectedMode.toString();
+
+                // TODO: send message for brightness mode and trim pot color selection
+                int hexMode = 0x01;
+
+                byte[] bufRed = new byte[] { (byte) 0x01, (byte) 0x00, (byte) 0x00 };
+                bufRed[1] = (byte) hexMode;
+                mCharacteristicTx.setValue(bufRed);
+                mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
             }
 
             @Override
