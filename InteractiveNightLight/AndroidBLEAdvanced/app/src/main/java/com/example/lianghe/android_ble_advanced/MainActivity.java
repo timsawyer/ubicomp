@@ -226,21 +226,37 @@ public class MainActivity extends AppCompatActivity {
 
     // Display the received Analog/Digital read on the interface
     private void readAnalogInValue(byte[] data) {
-//        for (int i = 0; i < data.length; i += 3) {
-//            if (data[i] == 0x0A) {
-//                if (data[i + 1] == 0x01)
-//                    mDigitalInBtn.setChecked(false);
-//                else
-//                    mDigitalInBtn.setChecked(true);
-//            } else if (data[i] == 0x0B) {
-//                int Value;
-//
-//                Value = ((data[i + 1] << 8) & 0x0000ff00)
-//                        | (data[i + 2] & 0x000000ff);
-//
-//                mAnalogInValue.setText(Value + "");
-//            }
-//        }
+        for (int i = 0; i < data.length; i += 3) {
+            if (data[i] == 0x0A) {
+                int trimPotVal;
+                trimPotVal = ((data[i + 1] << 8) & 0x0000ff00)
+                        | (data[i + 2] & 0x000000ff);
+                this.setColorFromTrimPotValue(trimPotVal);
+            }
+            else if (data[i] == 0x0B) {
+                int photoVal;
+                photoVal = ((data[i + 1] << 8) & 0x0000ff00)
+                        | (data[i + 2] & 0x000000ff);
+
+                this.setBrightnessFromPhotoVal(photoVal);
+            }
+        }
+    }
+
+    private void setColorFromTrimPotValue(double trimPotVal)
+    {
+        double val = trimPotVal / 4095; // convert to range between 0 and 1
+
+        // color logic based on https://stackoverflow.com/a/30309719
+        int red =   (int) Math.round((Math.min( Math.max(0, 1.5 - Math.abs(1 - 4 * (val-0.5))  ),1) * 255));
+        int green = (int) Math.round((Math.min( Math.max(0, 1.5 - Math.abs(1 - 4 * (val-0.25)) ),1) * 255));
+        int blue =  (int) Math.round((Math.min( Math.max(0, 1.5 - Math.abs(1 - 4 * val)        ),1) * 255));
+
+        setColorInUI(red, green, blue);
+    }
+
+    private void setBrightnessFromPhotoVal(int photoVal) {
+        mBrightnessSeekBar.setProgress(100, true);
     }
 
     // Get Gatt service information for setting up the communication
@@ -436,13 +452,18 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println(selectedMode.toString());
                 mBrightnessMode = selectedMode.toString();
 
-                // TODO: send message for brightness mode and trim pot color selection
-                int hexMode = 0x01;
+                if (mConnState == true) {
+                    int hexMode = 0x00;
 
-                byte[] bufRed = new byte[] { (byte) 0x01, (byte) 0x00, (byte) 0x00 };
-                bufRed[1] = (byte) hexMode;
-                mCharacteristicTx.setValue(bufRed);
-                mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+                    if (mBrightnessMode.equals("Auto")) {
+                        hexMode = 0x01;
+                    }
+
+                    byte[] bufRed = new byte[] { (byte) 0xA1, (byte) 0x00, (byte) 0x00 };
+                    bufRed[1] = (byte) hexMode;
+                    mCharacteristicTx.setValue(bufRed);
+                    mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+                }
             }
 
             @Override
@@ -517,6 +538,19 @@ public class MainActivity extends AppCompatActivity {
                 Object selectedMode = parent.getItemAtPosition(pos);
                 System.out.println(selectedMode.toString());
                 mColorMode = selectedMode.toString();
+
+                if (mConnState == true) {
+                    int hexMode = 0x00;
+
+                    if (mColorMode.equals("Trim pot")) {
+                        hexMode = 0x01;
+                    }
+
+                    byte[] bufRed = new byte[] { (byte) 0xA2, (byte) 0x00, (byte) 0x00 };
+                    bufRed[1] = (byte) hexMode;
+                    mCharacteristicTx.setValue(bufRed);
+                    mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+                }
             }
 
             @Override
@@ -609,6 +643,7 @@ public class MainActivity extends AppCompatActivity {
                     int mappedZ = map(mZ_MovingAverage, minAccel, maxAccel, rgbMin, rgbMax);
 
                     sendColor(mappedX, mappedY, mappedZ);
+                    setColorInUI(mappedX, mappedY, mappedZ);
                 }
 
             }
@@ -652,7 +687,7 @@ public class MainActivity extends AppCompatActivity {
         mTimer = new Runnable() {
             @Override
             public void run() {
-                if (mMags != null && mAccels != null && mColorMode.equals("Gyro") && mConnState == true) {
+                if (mMags != null && mAccels != null && mColorMode.equals("Orientation") && mConnState == true) {
                     float R[] = new float[9];
                     float I[] = new float[9];
                     boolean success = SensorManager.getRotationMatrix(R, I, mAccels, mMags);
@@ -677,6 +712,7 @@ public class MainActivity extends AppCompatActivity {
                         int mappedZ = map(roll, minAzimutRoll, maxAzimutRoll, rgbMin, rgbMax);
 
                         sendColor(mappedX, mappedY, mappedZ);
+                        setColorInUI(mappedX, mappedY, mappedZ);
                     }
                 }
 
@@ -711,7 +747,9 @@ public class MainActivity extends AppCompatActivity {
         bufBlue[1] = (byte) blue;
         mCharacteristicTx.setValue(bufBlue);
         mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+    }
 
+    private void setColorInUI(int red, int green, int blue) {
         String rgbText = "rgb(" + red + "," + green + "," + blue + ")";
         TextView textView = findViewById(R.id.colorRGB);
         textView.setText(rgbText);

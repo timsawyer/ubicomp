@@ -3,8 +3,8 @@
     package="com.example.lianghe.android_ble_advanced">
 
     <uses-sdk
-        android:minSdkVersion="18"
-        android:targetSdkVersion="18" />
+        android:minSdkVersion="24"
+        android:targetSdkVersion="24" />
 
     <!-- Declare the Bluetooth permissions in the manifest. Learn more about Bluetooth on Android
      development: https://developer.android.com/guide/topics/connectivity/bluetooth-->

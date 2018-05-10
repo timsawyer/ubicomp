@@ -4,7 +4,7 @@ android {
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.example.lianghe.pincontroldemo_android"
-        minSdkVersion 18
+        minSdkVersion 24
         // Set the target SDK version to 19 since we built our skeleton code based on RedBear provided code
         targetSdkVersion 19
         versionCode 1

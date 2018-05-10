@@ -33,6 +33,17 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 #define SERVO_PIN                  D4
 #define ANALOG_IN_PIN              A5
 
+int ledRed = D2;
+int ledGreen = D1;
+int ledBlue = D0;
+
+int photoIn = A4;
+int trimPotIn = A0;
+
+boolean auto_brightness = true;
+boolean trim_pot_color = true;
+double old_trimPotVal = -1;
+
 // Servo declaration
 Servo myservo;
 
@@ -70,10 +81,6 @@ static boolean analog_enabled = false;
 
 // Input pin state.
 static byte old_state = LOW;
-
-int ledRed = D2;
-int ledGreen = D1;
-int ledBlue = D0;
 
 
 /**
@@ -142,6 +149,18 @@ int bleWriteCallback(uint16_t value_handle, uint8_t *buffer, uint16_t size) {
       Serial.println(receive_data[1]);
       analogWrite(ledBlue, 255 - receive_data[1]);
     }
+    else if (receive_data[0] == 0xA1) { // Command is to set brightness mode
+      if (receive_data[1] == 0x01)
+        auto_brightness = true;
+      else
+        auto_brightness = false;
+    }
+    else if (receive_data[0] == 0xA2) { // Command is to set brightness mode
+      if (receive_data[1] == 0x01)
+        trim_pot_color = true;
+      else
+        trim_pot_color = false;
+    }
     
   }
   return 0;
@@ -183,6 +202,23 @@ static void  send_notify(btstack_timer_source_t *ts) {
       ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
     }
   }
+  if (trim_pot_color) {
+    Serial.println("Sending triming pot value");
+    Serial.println(analogRead(trimPotIn));
+    uint16_t value = analogRead(trimPotIn);
+    send_data[0] = (0x0A);
+    send_data[1] = (value >> 8);
+    send_data[2] = (0x00);
+    ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
+  }
+  if (auto_brightness) {
+    uint16_t value = analogRead(photoIn);
+    send_data[0] = (0x0B);
+    send_data[1] = (value >> 8);
+    send_data[2] = (0x00);
+    ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
+  }
+  
   // Restart timer.
   ble.setTimer(ts, 200);
   ble.addTimer(ts);
@@ -235,4 +271,37 @@ void setup() {
   analogWrite(PWM_PIN, 255);
 }
 
-void loop() {}
+void loop() {
+   if (auto_brightness) {
+    analogWrite(PWM_PIN, getAutoBrightness());
+  }
+  if (trim_pot_color) {
+    double trimPotVal = analogRead(trimPotIn);
+    Serial.println(trimPotVal);
+    delay(30);
+    setColor(trimPotVal);
+  }
+}
+
+int getAutoBrightness() {
+  int photoValue = analogRead(photoIn);
+  float inputVoltage = 3.3 * photoValue / 4095;
+  float photoPercentage = inputVoltage / 3.3;
+  int powerOut = (1 - photoPercentage) * 255;
+  
+  return powerOut;
+}
+
+void setColor(double trimPotVal)
+{
+  double val = trimPotVal / 4095; // convert to range between 0 and 1
+
+  // color logic based on https://stackoverflow.com/a/30309719
+  double red =   min( max(0, 1.5 - abs(1 - 4 * (val-0.5))  ),1) * 255;
+  double green = min( max(0, 1.5 - abs(1 - 4 * (val-0.25)) ),1) * 255;
+  double blue =  min( max(0, 1.5 - abs(1 - 4 * val)        ),1) * 255;
+  
+  analogWrite(ledRed, 255 - red);
+  analogWrite(ledGreen, 255 - green); 
+  analogWrite(ledBlue, 255 - blue);
+}
