@@ -58,6 +58,7 @@ import com.skydoves.colorpickerpreference.FlagMode;
 
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -255,8 +256,12 @@ public class MainActivity extends AppCompatActivity {
         setColorInUI(red, green, blue);
     }
 
-    private void setBrightnessFromPhotoVal(int photoVal) {
-        mBrightnessSeekBar.setProgress(100, true);
+    private void setBrightnessFromPhotoVal(int photoValue) {
+        double inputVoltage = 3.3 * photoValue / 4095;
+        double photoPercentage = inputVoltage / 3.3;
+        int powerOut = (int) Math.round((1 - photoPercentage) * 255);
+
+        mBrightnessSeekBar.setProgress(powerOut, true);
     }
 
     // Get Gatt service information for setting up the communication
@@ -433,6 +438,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
         /**
          * Brightness mode spinner setup
          */
@@ -490,12 +496,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress,
                                           boolean fromUser) {
-                byte[] buf = new byte[] { (byte) 0x02, (byte) 0x00, (byte) 0x00 };
 
-                buf[1] = (byte) mBrightnessSeekBar.getProgress();
+                if (mConnState == true) {
+                    byte[] buf = new byte[]{(byte) 0x02, (byte) 0x00, (byte) 0x00};
+                    buf[1] = (byte) mBrightnessSeekBar.getProgress();
 
-                mCharacteristicTx.setValue(buf);
-                mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+                    mCharacteristicTx.setValue(buf);
+                    mBluetoothLeService.writeCharacteristic(mCharacteristicTx);
+                }
             }
         });
 
