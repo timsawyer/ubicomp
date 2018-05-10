@@ -175,33 +175,6 @@ int bleWriteCallback(uint16_t value_handle, uint8_t *buffer, uint16_t size) {
  * the other BLE-abled devices
  */
 static void  send_notify(btstack_timer_source_t *ts) {
-  if (analog_enabled) { // if analog reading enabled.
-    //Serial.println("characteristic2_notify analog reading ");
-    // Read and send out
-    uint16_t value = analogRead(ANALOG_IN_PIN);
-    send_data[0] = (0x0B);
-    send_data[1] = (value >> 8);
-    send_data[2] = (value);
-    if (ble.attServerCanSendPacket())
-      ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
-  }
-  // If digital in changes, report the state.
-  if (digitalRead(DIGITAL_IN_PIN) != old_state) {
-    Serial.println("send_notify digital reading ");
-    old_state = digitalRead(DIGITAL_IN_PIN);
-    if (digitalRead(DIGITAL_IN_PIN) == HIGH) {
-      send_data[0] = (0x0A);
-      send_data[1] = (0x01);
-      send_data[2] = (0x00);
-      ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
-    }
-    else {
-      send_data[0] = (0x0A);
-      send_data[1] = (0x00);
-      send_data[2] = (0x00);
-      ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
-    }
-  }
   if (trim_pot_color) {
     Serial.println("Sending triming pot value");
     Serial.println(analogRead(trimPotIn));
@@ -212,6 +185,8 @@ static void  send_notify(btstack_timer_source_t *ts) {
     ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
   }
   if (auto_brightness) {
+    Serial.println("Sending photo sensor value");
+    Serial.println(analogRead(photoIn));
     uint16_t value = analogRead(photoIn);
     send_data[0] = (0x0B);
     send_data[1] = (value >> 8);
