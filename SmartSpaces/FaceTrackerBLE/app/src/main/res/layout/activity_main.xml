@@ -30,6 +30,19 @@
         android:text="flip"/>
 
     <TextView
+        android:id="@+id/rangeFromFace"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="60dp"
+        android:background="#414141"
+        android:padding="4dp"
+        android:text="Face distance: Unknown"
+        android:textSize="24sp" />
+
+    <TextView
         android:id="@+id/textViewBleStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -39,6 +52,16 @@
         android:textSize="11dp"
         android:textColor="#FFFFFF"
         android:text="flip"/>
+
+
+    <ImageView
+        android:id="@+id/screenshotView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="100dp"
+        android:layout_marginRight="100dp"
+        android:scaleType="fitCenter" />
 
 
 </RelativeLayout>

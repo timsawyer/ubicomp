@@ -9,15 +9,21 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,7 +36,11 @@ import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
 import com.google.android.gms.vision.face.LargestFaceFocusingProcessor;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import io.makeabilitylab.facetrackerble.ble.BLEDevice;
 import io.makeabilitylab.facetrackerble.ble.BLEListener;
@@ -54,6 +64,10 @@ import io.makeabilitylab.facetrackerble.camera.GraphicOverlay;
  *  1. (Low priority) We shouldn't disconnect from BLE just because our orientation changed (e.g., from Portrait to Landscape). How to deal?
  */
 public class MainActivity extends AppCompatActivity implements BLEListener{
+
+    private ImageView screenshotView;
+    private boolean screenshotAllowed = true;
+    private Uri mImageFile;
 
     private static final String TAG = "FaceTrackerBLE";
     private static final int RC_HANDLE_GMS = 9001;
@@ -89,6 +103,9 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        screenshotView = (ImageView) findViewById(R.id.screenshotView);
+        screenshotView.setVisibility(View.GONE);
 
         mPreview = (CameraSourcePreview) findViewById(R.id.cameraSourcePreview);
         mGraphicOverlay = (GraphicOverlay) findViewById(R.id.faceOverlay);
@@ -140,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
     private void requestCameraPermission() {
         Log.w(TAG, "Camera permission is not granted. Requesting permission");
 
-        final String[] permissions = new String[]{Manifest.permission.CAMERA};
+        final String[] permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
         if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
                 Manifest.permission.CAMERA)) {
@@ -173,6 +190,14 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
                 && !BLEUtil.isBluetoothEnabled(this)) {
             finish();
             return;
+        }
+
+        // picture taken activity
+        if (requestCode == 100) {
+            if (resultCode == RESULT_OK) {
+                screenshotView.setImageURI(mImageFile);
+                screenshotView.setVisibility(View.VISIBLE);
+            }
         }
 
         super.onActivityResult(requestCode, resultCode, data);
@@ -593,10 +618,67 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
         // Write code here that receives the ultrasonic measurements from Arduino
         // and outputs them in your app. (You could also consider receiving the angle
         // of the servo motor but this would be more for debugging and is not necessary)
+        for (int i = 0; i < data.length; i += 3) {
+            if (data[i] == 0x0A) {
+                int rangeFinderValue;
+                rangeFinderValue = ((data[i + 1] << 8) & 0x0000ff00)
+                        | (data[i + 2] & 0x000000ff);
+
+                int rangeInCentimeters = rangeFinderValue / 58;
+                System.out.println("Range measurement: " + rangeInCentimeters);
+
+                TextView textViewBleStatus = (TextView)findViewById(R.id.rangeFromFace);
+
+                if (rangeInCentimeters < 260) {
+                    textViewBleStatus.setText("Face distance: " + rangeInCentimeters + "cm");
+                }
+                else {
+                    textViewBleStatus.setText("Face distance: Unknown");
+                }
+
+
+                if (screenshotAllowed && rangeInCentimeters < 40) {
+                    screenshotAllowed = false;
+                    takePicture(mPreview);
+                }
+
+            }
+        }
     }
 
     @Override
     public void onBleRssiChanged(int rssi) {
         // Not needed for this app
+    }
+
+
+    public void takePicture(View view) {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        File output = getOutputMediaFile();
+
+
+        if (output != null) {
+            mImageFile = FileProvider.getUriForFile(this, "facetracker.authority", output);
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, mImageFile);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+            startActivityForResult(intent, 100);
+        }
+    }
+
+    private static File getOutputMediaFile(){
+        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), "FaceTrackerPictures");
+
+        if (!mediaStorageDir.exists()){
+            if (!mediaStorageDir.mkdirs()){
+                return null;
+            }
+        }
+
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        return new File(mediaStorageDir.getPath() + File.separator +
+                "IMG_"+ timeStamp + ".jpg");
     }
 }
