@@ -12,6 +12,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.design.widget.Snackbar;
@@ -37,9 +38,11 @@ import com.google.android.gms.vision.face.FaceDetector;
 import com.google.android.gms.vision.face.LargestFaceFocusingProcessor;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 import io.makeabilitylab.facetrackerble.ble.BLEDevice;
@@ -68,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
     private ImageView screenshotView;
     private boolean screenshotAllowed = true;
     private Uri mImageFile;
+    private float mCurrentFaceHappiness;
 
     private static final String TAG = "FaceTrackerBLE";
     private static final int RC_HANDLE_GMS = 9001;
@@ -81,8 +85,10 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
 
     private CameraSourcePreview mPreview;
     private GraphicOverlay mGraphicOverlay;
+    private MainActivity mContext;
 
     private boolean mIsFrontFacing = true;
+    private boolean mFaceFound = false;
 
     // Bluetooth stuff
     private BLEDevice mBLEDevice;
@@ -91,6 +97,30 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
     // default name or you will not be able to discriminate your board from everyone else's board.
     // Note the device name and the length should be consistent with the ones defined in the Duo sketch
     private final String TARGET_BLE_DEVICE_NAME = "TimboLE";
+
+
+    // moving average filter for smoothing the ultrasonic measurements
+    private int mDistanceWindowSize = 5;
+    ArrayList<Double> mDistancePoints = new ArrayList<Double>();
+    private Double mDistanceMovingAverage;
+
+    // moving average filter for smoothing the face tracking measurements
+    private int mFaceTrackingWindowSize = 5;
+    ArrayList<Double> mFaceTrackingPoints = new ArrayList<Double>();
+    private Double mFaceTrackingMovingAverage;
+
+
+    private double calculateAverage(ArrayList<Double> values) {
+        Double sum = 0.0;
+        if(!values.isEmpty()) {
+            for (Double value : values) {
+                sum += value;
+            }
+            return sum / values.size();
+        }
+        return sum;
+    }
+
 
     //==============================================================================================
     // Activity Methods
@@ -101,6 +131,8 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
      */
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        mContext = this;
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -112,6 +144,10 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
 
         final Button button = (Button) findViewById(R.id.buttonFlip);
         button.setOnClickListener(mFlipButtonListener);
+
+
+        final Button pictureButton = (Button) findViewById(R.id.buttonPicture);
+        pictureButton.setOnClickListener(mPictureButtonListener);
 
         if (savedInstanceState != null) {
             mIsFrontFacing = savedInstanceState.getBoolean("IsFrontFacing");
@@ -190,14 +226,6 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
                 && !BLEUtil.isBluetoothEnabled(this)) {
             finish();
             return;
-        }
-
-        // picture taken activity
-        if (requestCode == 100) {
-            if (resultCode == RESULT_OK) {
-                screenshotView.setImageURI(mImageFile);
-                screenshotView.setVisibility(View.VISIBLE);
-            }
         }
 
         super.onActivityResult(requestCode, resultCode, data);
@@ -384,6 +412,13 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
         }
     };
 
+    private View.OnClickListener mPictureButtonListener = new View.OnClickListener() {
+        public void onClick(View v) {
+            takeAndSavePicture();
+        }
+    };
+
+
     //==============================================================================================
     // Camera Source Preview
     //==============================================================================================
@@ -454,6 +489,7 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
          */
         @Override
         public void onNewItem(int faceId, Face item) {
+            mFaceFound = true;
             mFaceGraphic.setId(faceId);
         }
 
@@ -522,16 +558,25 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
             }
 
 
-//            Log.i(TAG, Float.toString(face.getPosition().x));
+            // calc center of face and, map to number between 0 and 255
             float centerOfFaceX = face.getPosition().x + (face.getWidth() / 2);
             int faceLocation = map(centerOfFaceX, 0, 500, 0, 255);
-//            System.out.println(faceLocation);
-            int faceMessage = Math.round(centerOfFaceX / CAMERA_PREVIEW_WIDTH) * 255;
-            Log.i(TAG, Float.toString(centerOfFaceX));
-            buf[4] = (byte) faceLocation;
+
+            mFaceTrackingPoints.add((double) faceLocation);
+            mFaceTrackingMovingAverage = calculateAverage(mFaceTrackingPoints);
+
+            if (mFaceTrackingPoints.size() > mFaceTrackingWindowSize) {
+                mFaceTrackingPoints.remove(0);
+            }
+
+            buf[4] = (byte) Math.round(mFaceTrackingMovingAverage);
 
             // Send the data!
             mBLEDevice.sendData(buf);
+
+
+            // save current face happiness for picture taking
+            mCurrentFaceHappiness = face.getIsSmilingProbability();
         }
 
         /**
@@ -542,6 +587,7 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
         @Override
         public void onMissing(FaceDetector.Detections<Face> detectionResults) {
             mOverlay.remove(mFaceGraphic);
+            mFaceFound = false;
         }
 
         /**
@@ -624,22 +670,37 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
                 rangeFinderValue = ((data[i + 1] << 8) & 0x0000ff00)
                         | (data[i + 2] & 0x000000ff);
 
-                int rangeInCentimeters = rangeFinderValue / 58;
-                System.out.println("Range measurement: " + rangeInCentimeters);
+                double rangeInCentimeters = rangeFinderValue / 58;
+                mDistancePoints.add(rangeInCentimeters);
+                mDistanceMovingAverage = calculateAverage(mDistancePoints);
+
+                if (mDistancePoints.size() > mDistanceWindowSize) {
+                    mDistancePoints.remove(0);
+                }
 
                 TextView textViewBleStatus = (TextView)findViewById(R.id.rangeFromFace);
 
-                if (rangeInCentimeters < 260) {
-                    textViewBleStatus.setText("Face distance: " + rangeInCentimeters + "cm");
+                if (mDistanceMovingAverage < 260 && mFaceFound) {
+                    textViewBleStatus.setText("Face distance: " + Math.round(mDistanceMovingAverage) + "cm");
                 }
                 else {
                     textViewBleStatus.setText("Face distance: Unknown");
                 }
 
 
-                if (screenshotAllowed && rangeInCentimeters < 40) {
+                // if a face is close enough and is smiling, take a picture and store.
+                if (screenshotAllowed && rangeInCentimeters < 40 && mCurrentFaceHappiness > 0.9) {
                     screenshotAllowed = false;
-                    takePicture(mPreview);
+
+                    takeAndSavePicture();
+
+                    // wait 10 seconds before allowing another picture
+                    new CountDownTimer(10000, 1000) {
+                        public void onTick(long millisUntilFinished) {}
+                        public void onFinish() {
+                            screenshotAllowed = true;
+                        }
+                    }.start();
                 }
 
             }
@@ -651,20 +712,33 @@ public class MainActivity extends AppCompatActivity implements BLEListener{
         // Not needed for this app
     }
 
+    private void takeAndSavePicture() {
+        mPreview.takePicture(null, new CameraSource.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] data) {
+                try {
+                    File outputFile = getOutputMediaFile();
+                    FileOutputStream outStream = new FileOutputStream(outputFile);
+                    outStream.write(data);
+                    outStream.close();
 
-    public void takePicture(View view) {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        File output = getOutputMediaFile();
+                    mImageFile = FileProvider.getUriForFile(mContext, "facetracker.authority", outputFile);
+                    screenshotView.setImageURI(mImageFile);
+                    screenshotView.setVisibility(View.VISIBLE);
 
-
-        if (output != null) {
-            mImageFile = FileProvider.getUriForFile(this, "facetracker.authority", output);
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, mImageFile);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-
-            startActivityForResult(intent, 100);
-        }
+                    // after 2.5 seconds hide the picture that we just took
+                    new CountDownTimer(2500, 1000) {
+                        public void onTick(long millisUntilFinished) {}
+                        public void onFinish() {
+                            screenshotView.setVisibility(View.GONE);
+                        }
+                    }.start();
+                }
+                catch(IOException e) {
+                    System.out.println(e.toString());
+                }
+            }
+        });
     }
 
     private static File getOutputMediaFile(){

@@ -35,7 +35,7 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 
 #define SERVO_OUTPUT_PIN  D3
 #define MAX_SERVO_ANGLE  180
-#define MIN_SERVO_ANGLE  0
+#define MIN_SERVO_ANGLE  60
 
 int _curAngle = 0;
 

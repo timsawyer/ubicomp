@@ -29,6 +29,15 @@
         android:layout_alignParentLeft="true"
         android:text="flip"/>
 
+    <Button
+        android:id="@+id/buttonPicture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_marginLeft="100dp"
+        android:text="Take picture"/>
+
     <TextView
         android:id="@+id/rangeFromFace"
         android:layout_width="wrap_content"
@@ -59,8 +68,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="100dp"
         android:layout_marginRight="100dp"
+        android:layout_marginTop="100dp"
+        android:rotation="270"
         android:scaleType="fitCenter" />
 
 
