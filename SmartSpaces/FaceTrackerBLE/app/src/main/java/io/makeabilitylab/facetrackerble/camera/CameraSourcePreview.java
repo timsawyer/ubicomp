@@ -81,6 +81,10 @@ public class CameraSourcePreview extends ViewGroup {
         }
     }
 
+    public void takePicture(CameraSource.ShutterCallback shutter, CameraSource.PictureCallback jpeg) {
+        mCameraSource.takePicture(shutter, jpeg);
+    }
+
     private void startIfReady() throws IOException {
         if (mStartRequested && mSurfaceAvailable) {
             mCameraSource.start(mSurfaceView.getHolder());

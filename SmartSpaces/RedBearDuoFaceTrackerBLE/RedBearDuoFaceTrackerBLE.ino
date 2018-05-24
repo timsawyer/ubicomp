@@ -35,9 +35,31 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 
 #define SERVO_OUTPUT_PIN  D3
 #define MAX_SERVO_ANGLE  180
-#define MIN_SERVO_ANGLE  0
+#define MIN_SERVO_ANGLE  60
 
 int _curAngle = 0;
+
+// Pins
+const int TRIG_PIN = D0;
+const int ECHO_PIN = D1;
+unsigned long prevRangeMeasureMillis = 0;
+unsigned long range_measure_interval = 60;
+
+
+//lights and blinking
+const int RED_LED_OUTPUT_PIN = D8;
+const long blink_interval = 250;
+unsigned long previousMillis = 0;
+int blinkledState = LOW;
+
+// sound
+const int SOUND_OUTPUT_PIN = D9;
+
+// distance vars
+float cm = 1000;
+float inches = 1000;
+const unsigned int MAX_DIST = 23200;
+unsigned long pulse_width;
 
 #define BLE_DEVICE_CONNECTED_DIGITAL_OUT_PIN D7
 
@@ -79,13 +101,13 @@ static uint8_t adv_data[] = {
 
 static btstack_timer_source_t send_characteristic;
 static void bleSendDataTimerCallback(btstack_timer_source_t *ts); // function declaration for sending data callback
-int _sendDataFrequency = 200; // 200ms (how often to read the pins and transmit the data to Android)
+int _sendDataFrequency = 120; // 200ms (how often to read the pins and transmit the data to Android)
 
 void setup() {
   _servo.attach(SERVO_OUTPUT_PIN);
   
   Serial.begin(115200);
-  delay(5000);
+  delay(3000);
   Serial.println("Face Tracker BLE Demo.");
 
   // Initialize ble_stack.
@@ -113,25 +135,94 @@ void setup() {
   ble.startAdvertising();
   Serial.println("BLE start advertising.");
 
-  // Setup pins
-  pinMode(LEFT_EYE_ANALOG_OUT_PIN, OUTPUT);
-  pinMode(RIGHT_EYE_ANALOG_OUT_PIN, OUTPUT);
-  pinMode(BLE_DEVICE_CONNECTED_DIGITAL_OUT_PIN, OUTPUT);
-  _happinessServo.attach(HAPPINESS_ANALOG_OUT_PIN);
-  _happinessServo.write( (int)((MAX_SERVO_ANGLE - MIN_SERVO_ANGLE) / 2.0) );
+//  // Setup pins
+//  pinMode(LEFT_EYE_ANALOG_OUT_PIN, OUTPUT);
+//  pinMode(RIGHT_EYE_ANALOG_OUT_PIN, OUTPUT);
+//  pinMode(BLE_DEVICE_CONNECTED_DIGITAL_OUT_PIN, OUTPUT);
+//  _happinessServo.attach(HAPPINESS_ANALOG_OUT_PIN);
+//  _happinessServo.write( (int)((MAX_SERVO_ANGLE - MIN_SERVO_ANGLE) / 2.0) );
 
   // Start a task to check status of the pins on your RedBear Duo
   // Works by polling every X milliseconds where X is _sendDataFrequency
   send_characteristic.process = &bleSendDataTimerCallback;
   ble.setTimer(&send_characteristic, _sendDataFrequency); 
   ble.addTimer(&send_characteristic);
+
+  //lights
+  pinMode(RED_LED_OUTPUT_PIN, OUTPUT);
+
+  //sound 
+  pinMode(SOUND_OUTPUT_PIN, OUTPUT);
+  
+  // The Trigger pin will tell the sensor to range find
+  pinMode(TRIG_PIN, OUTPUT);
+  digitalWrite(TRIG_PIN, LOW);
 }
 
 void loop() 
 {
-  // Not currently used. The "meat" of the program is in the callback bleWriteCallback and send_notify
-//  _servo.write(180);
-//  delay(100);
+  // blink without delay tutorial used from https://www.arduino.cc/en/Tutorial/BlinkWithoutDelay
+  unsigned long currentMillis = millis();
+
+  // interval check for lights and sound
+  if (currentMillis - previousMillis >= blink_interval) {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+
+    // if the LED is off turn it on and vice-versa:
+    if (blinkledState == LOW && cm < 50) {
+      blinkledState = HIGH;
+      tone(SOUND_OUTPUT_PIN, 200);
+    } else {
+      blinkledState = LOW;
+      noTone(SOUND_OUTPUT_PIN);
+    }
+
+    // set the LED with the ledState of the variable:
+    digitalWrite(RED_LED_OUTPUT_PIN, blinkledState);
+  }
+
+
+  // interval check for making taking measurements with ultrasonic
+  if (currentMillis - prevRangeMeasureMillis >= range_measure_interval) {
+    prevRangeMeasureMillis = currentMillis;
+
+    unsigned long t1;
+    unsigned long t2;
+  
+    // Hold the trigger pin high for at least 10 us
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+  
+    // Wait for pulse on echo pin
+    while ( digitalRead(ECHO_PIN) == 0 );
+  
+    // Measure how long the echo pin was held high (pulse width)
+    // Note: the micros() counter will overflow after ~70 min
+    t1 = micros();
+    while ( digitalRead(ECHO_PIN) == 1);
+    t2 = micros();
+    pulse_width = t2 - t1;
+  
+    // Calculate distance in centimeters and inches. The constants
+    // are found in the datasheet, and calculated from the assumed speed 
+    // of sound in air at sea level (~340 m/s).
+    // Datasheet: https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf
+    cm = pulse_width / 58.0;
+    inches = pulse_width / 148.0;
+
+    delay(10);
+  //   Print out results
+//    if ( pulse_width > MAX_DIST ) {
+//      Serial.println("Out of range");
+//    } else {
+//      Serial.print(cm);
+//      Serial.print(" cm \t");
+//      Serial.print(inches);
+//      Serial.println(" in");
+//    }
+  }
 }
 
 /**
@@ -146,7 +237,6 @@ void bleConnectedCallback(BLEStatus_t status, uint16_t handle) {
   switch (status) {
     case BLE_STATUS_OK:
       Serial.println("BLE device connected!");
-      digitalWrite(BLE_DEVICE_CONNECTED_DIGITAL_OUT_PIN, HIGH);
       break;
     default: break;
   }
@@ -161,7 +251,6 @@ void bleConnectedCallback(BLEStatus_t status, uint16_t handle) {
  */
 void bleDisconnectedCallback(uint16_t handle) {
   Serial.println("BLE device disconnected.");
-  digitalWrite(BLE_DEVICE_CONNECTED_DIGITAL_OUT_PIN, LOW);
 }
 
 /**
@@ -178,10 +267,10 @@ int bleReceiveDataCallback(uint16_t value_handle, uint8_t *buffer, uint16_t size
   if (receive_handle == value_handle) {
     memcpy(receive_data, buffer, RECEIVE_MAX_LEN);
 //    Serial.print("Received data: ");
-    for (uint8_t index = 0; index < RECEIVE_MAX_LEN; index++) {
+//    for (uint8_t index = 0; index < RECEIVE_MAX_LEN; index++) {
 //      Serial.print(receive_data[index]);
 //      Serial.print(" ");
-    }
+//    }
 //    Serial.println(" ");
     
     // process the data. 
@@ -191,25 +280,24 @@ int bleReceiveDataCallback(uint16_t value_handle, uint8_t *buffer, uint16_t size
       // and properly angles the servo + ultrasonic sensor towards the face
       // Example servo code here: https://github.com/jonfroehlich/CSE590Sp2018/tree/master/L06-Arduino/RedBearDuoServoSweep   
 
-      if (receive_data[1] == 0x01) {
-        digitalWrite(LEFT_EYE_ANALOG_OUT_PIN, HIGH);
-      }
-      else {
-        digitalWrite(LEFT_EYE_ANALOG_OUT_PIN, 0);
-      }
-
-      if (receive_data[2] == 0x01) {
-        digitalWrite(RIGHT_EYE_ANALOG_OUT_PIN, HIGH);
-      }
-      else {
-        digitalWrite(RIGHT_EYE_ANALOG_OUT_PIN, 0);
-      }
+//      if (receive_data[1] == 0x01) {
+//        digitalWrite(LEFT_EYE_ANALOG_OUT_PIN, HIGH);
+//      }
+//      else {
+//        digitalWrite(LEFT_EYE_ANALOG_OUT_PIN, 0);
+//      }
+//
+//      if (receive_data[2] == 0x01) {
+//        digitalWrite(RIGHT_EYE_ANALOG_OUT_PIN, HIGH);
+//      }
+//      else {
+//        digitalWrite(RIGHT_EYE_ANALOG_OUT_PIN, 0);
+//      }
 
       int faceLocation = (int) receive_data[4];
       _curAngle = MAX_SERVO_ANGLE - map(faceLocation, 0, 255, MIN_SERVO_ANGLE, MAX_SERVO_ANGLE);
       _servo.write(_curAngle);
-      Serial.println(_curAngle);
-      delay(10);
+      // Serial.println(_curAngle);
     }
   }
   return 0;
@@ -228,4 +316,16 @@ static void bleSendDataTimerCallback(btstack_timer_source_t *ts) {
   // Write code that uses the ultrasonic sensor and transmits this to Android
   // Example ultrasonic code here: https://github.com/jonfroehlich/CSE590Sp2018/tree/master/L06-Arduino/RedBearDuoUltrasonicRangeFinder
   // Also need to check if distance measurement < threshold and sound alarm
+
+  Serial.print("Sending value to android: ");
+//  uint16_t value = cm / 10;
+  Serial.println(pulse_width);
+  send_data[0] = (0x0A);
+  send_data[1] = (pulse_width >> 8);
+  send_data[2] = (0x00);
+  ble.sendNotify(send_handle, send_data, SEND_MAX_LEN);
+
+  // Restart timer.
+  ble.setTimer(ts, 120);
+  ble.addTimer(ts);
 }
